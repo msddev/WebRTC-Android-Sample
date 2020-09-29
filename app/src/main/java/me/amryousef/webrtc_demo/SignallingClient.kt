@@ -11,8 +11,8 @@ import io.ktor.http.cio.websocket.*
 import io.ktor.util.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
-import org.webrtc.IceCandidate
-import org.webrtc.SessionDescription
+import me.amryousef.webrtc_demo.models.IceCandidatesModel
+import me.amryousef.webrtc_demo.models.SessionDescriptionModel
 
 @ExperimentalCoroutinesApi
 @KtorExperimentalAPI
@@ -22,6 +22,10 @@ class SignallingClient(
 
     companion object {
         private const val HOST_ADDRESS = "192.168.18.243"
+        private const val LOGIN = "login"
+        private const val CANDIDATE = "candidate"
+        private const val OFFER = "offer"
+        private const val ANSWER = "answer"
     }
 
     private val job = Job()
@@ -60,7 +64,42 @@ class SignallingClient(
                             Log.v(this@SignallingClient.javaClass.simpleName, "Received: $data")
                             val jsonObject = gson.fromJson(data, JsonObject::class.java)
                             withContext(Dispatchers.Main) {
-                                if (jsonObject.has("serverUrl")) {
+
+                                when (jsonObject.get("type").asString) {
+                                    LOGIN -> {
+                                        listener.onLoggedIn(jsonObject.get("success").asBoolean)
+                                    }
+                                    OFFER -> {
+                                        listener.onOfferReceived(
+                                            gson.fromJson(
+                                                jsonObject,
+                                                SessionDescriptionModel::class.java
+                                            )
+                                        )
+                                    }
+                                    ANSWER -> {
+                                        listener.onAnswerReceived(
+                                            gson.fromJson(
+                                                jsonObject,
+                                                SessionDescriptionModel::class.java
+                                            )
+                                        )
+                                    }
+                                    CANDIDATE -> {
+                                        listener.onIceCandidateReceived(
+                                            gson.fromJson(
+                                                jsonObject,
+                                                IceCandidatesModel::class.java
+                                            )
+                                        )
+                                    }
+
+                                    else -> {
+
+                                    }
+                                }
+
+                                /*if (jsonObject.has("serverUrl")) {
                                     listener.onIceCandidateReceived(
                                         gson.fromJson(
                                             jsonObject,
@@ -81,7 +120,7 @@ class SignallingClient(
                                             SessionDescription::class.java
                                         )
                                     )
-                                }
+                                }*/
                             }
                         }
                     }
