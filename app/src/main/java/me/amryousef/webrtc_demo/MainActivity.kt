@@ -39,12 +39,11 @@ class MainActivity : AppCompatActivity() {
             super.onCreateSuccess(sessionDescription)
 
             sessionDescription?.let {
-                val sdp =
-                    SdpModel(sdp = it.description, type = it.type.name.toLowerCase(Locale.ROOT))
+                val sdp = SdpModel(sdp = it.description, type = it.type.name.toLowerCase(Locale.ROOT))
                 val sessionDescriptionModel = SessionDescriptionModel(
-                    type = it.type.name.toLowerCase(Locale.ROOT),
-                    offer = sdp,
-                    name = "Test2"
+                        type = it.type.name.toLowerCase(Locale.ROOT),
+                        offer = sdp,
+                        name = etnCalleeUserName.text.toString()
                 )
                 signallingClient.send(sessionDescriptionModel)
             } ?: run {
@@ -61,9 +60,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkCameraPermission() {
         if (ContextCompat.checkSelfPermission(
-                this,
-                CAMERA_PERMISSION
-            ) != PackageManager.PERMISSION_GRANTED
+                        this,
+                        CAMERA_PERMISSION
+                ) != PackageManager.PERMISSION_GRANTED
         ) {
             requestCameraPermission()
         } else {
@@ -73,29 +72,29 @@ class MainActivity : AppCompatActivity() {
 
     private fun onCameraPermissionGranted() {
         rtcClient = RTCClient(
-            application,
-            object : PeerConnectionObserver() {
-                override fun onIceCandidate(iceCandidate: IceCandidate?) {
-                    super.onIceCandidate(iceCandidate)
-                    iceCandidate?.let {
-                        val iceCandidatesModel =
-                            IceCandidatesModel(type = "candidate", candidate = iceCandidate.sdp)
-                        signallingClient.send(iceCandidatesModel)
-                        rtcClient.addIceCandidate(iceCandidate)
-                    } ?: run {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Error in iceCandidate",
-                            Toast.LENGTH_LONG
-                        ).show()
+                application,
+                object : PeerConnectionObserver() {
+                    override fun onIceCandidate(iceCandidate: IceCandidate?) {
+                        super.onIceCandidate(iceCandidate)
+                        iceCandidate?.let {
+                            val iceCandidatesModel =
+                                    IceCandidatesModel(type = "candidate", candidate = iceCandidate, name = etLoginUserName.text.toString())
+                            signallingClient.send(iceCandidatesModel)
+                            rtcClient.addIceCandidate(iceCandidate)
+                        } ?: run {
+                            Toast.makeText(
+                                    this@MainActivity,
+                                    "Error in iceCandidate",
+                                    Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+
+                    override fun onAddStream(p0: MediaStream?) {
+                        super.onAddStream(p0)
+                        p0?.videoTracks?.get(0)?.addSink(remote_view)
                     }
                 }
-
-                override fun onAddStream(p0: MediaStream?) {
-                    super.onAddStream(p0)
-                    p0?.videoTracks?.get(0)?.addSink(remote_view)
-                }
-            }
         )
         rtcClient.initSurfaceView(remote_view)
         rtcClient.initSurfaceView(local_view)
@@ -119,76 +118,81 @@ class MainActivity : AppCompatActivity() {
 
     private fun createSignallingClientListener() = object : SignallingClientListener {
         override fun onConnectionEstablished() {
-            groupLogin.isVisible = true
+            runOnUiThread {
+                groupLogin.isVisible = true
+            }
         }
 
         override fun onLoggedIn(isLogeIn: Boolean) {
             groupLogin.isVisible = !isLogeIn
             btnCall.isVisible = isLogeIn
+            etnCalleeUserName.isVisible = isLogeIn
+
+            tvCurrentDeviceName.text = etLoginUserName.text.toString()
         }
 
-        override fun onOfferReceived(offer: SessionDescriptionModel) {
-            val sessionDescription = SessionDescription(
-                SessionDescription.Type.valueOf(offer.type),
-                offer.name
+        override fun onOfferReceived(sessionDescription: SessionDescriptionModel) {
+            rtcClient.onRemoteSessionReceived(
+                    SessionDescription(
+                            SessionDescription.Type.valueOf(sessionDescription.type.toUpperCase()),
+                            sessionDescription.offer.sdp
+                    )
             )
-
-            rtcClient.onRemoteSessionReceived(sessionDescription)
             rtcClient.answer(sdpObserver)
             remote_view_loading.isGone = true
         }
 
-        override fun onAnswerReceived(answer: SessionDescriptionModel) {
-            val sessionDescription = SessionDescription(
-                SessionDescription.Type.valueOf(answer.type),
-                answer.name
-            )
+        override fun onAnswerReceived(sessionDescription: SessionDescriptionModel) {
 
-            rtcClient.onRemoteSessionReceived(sessionDescription)
+            rtcClient.onRemoteSessionReceived(
+                    SessionDescription(
+                            SessionDescription.Type.valueOf(sessionDescription.type.toUpperCase()),
+                            sessionDescription.offer.sdp
+                    )
+            )
             remote_view_loading.isGone = true
         }
 
-        override fun onIceCandidateReceived(iceCandidateModel: IceCandidatesModel) {
-            val iceCandidate = IceCandidate("audio", 0, iceCandidateModel.candidate)
-            rtcClient.addIceCandidate(iceCandidate)
+        override fun onIceCandidateReceived(iceCandidate: IceCandidatesModel) {
+            rtcClient.addIceCandidate(iceCandidate.candidate)
         }
     }
 
     private fun requestCameraPermission(dialogShown: Boolean = false) {
         if (ActivityCompat.shouldShowRequestPermissionRationale(
-                this,
-                CAMERA_PERMISSION
-            ) && !dialogShown
+                        this,
+                        CAMERA_PERMISSION
+                ) && !dialogShown
         ) {
             showPermissionRationaleDialog()
         } else {
             ActivityCompat.requestPermissions(
-                this,
-                arrayOf(CAMERA_PERMISSION),
-                CAMERA_PERMISSION_REQUEST_CODE
+                    this,
+                    arrayOf(CAMERA_PERMISSION),
+                    CAMERA_PERMISSION_REQUEST_CODE
             )
         }
     }
 
     private fun showPermissionRationaleDialog() {
         AlertDialog.Builder(this)
-            .setTitle("Camera Permission Required")
-            .setMessage("This app need the camera to function")
-            .setPositiveButton("Grant") { dialog, _ ->
-                dialog.dismiss()
-                requestCameraPermission(true)
-            }
-            .setNegativeButton("Deny") { dialog, _ ->
-                dialog.dismiss()
-                onCameraPermissionDenied()
-            }
-            .show()
+                .setTitle("Camera Permission Required")
+                .setMessage("This app need the camera to function")
+                .setPositiveButton("Grant") { dialog, _ ->
+                    dialog.dismiss()
+                    requestCameraPermission(true)
+                }
+                .setNegativeButton("Deny") { dialog, _ ->
+                    dialog.dismiss()
+                    onCameraPermissionDenied()
+                }
+                .show()
     }
 
     override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
+            requestCode: Int,
+            permissions: Array<out String>,
+            grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == CAMERA_PERMISSION_REQUEST_CODE && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {

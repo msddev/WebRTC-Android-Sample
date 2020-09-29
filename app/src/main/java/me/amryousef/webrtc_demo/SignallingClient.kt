@@ -17,7 +17,7 @@ import me.amryousef.webrtc_demo.models.SessionDescriptionModel
 @ExperimentalCoroutinesApi
 @KtorExperimentalAPI
 class SignallingClient(
-    private val listener: SignallingClientListener
+        private val listener: SignallingClientListener
 ) : CoroutineScope {
 
     companion object {
@@ -71,56 +71,29 @@ class SignallingClient(
                                     }
                                     OFFER -> {
                                         listener.onOfferReceived(
-                                            gson.fromJson(
-                                                jsonObject,
-                                                SessionDescriptionModel::class.java
-                                            )
+                                                gson.fromJson(
+                                                        jsonObject,
+                                                        SessionDescriptionModel::class.java
+                                                )
                                         )
                                     }
                                     ANSWER -> {
                                         listener.onAnswerReceived(
-                                            gson.fromJson(
-                                                jsonObject,
-                                                SessionDescriptionModel::class.java
-                                            )
+                                                gson.fromJson(
+                                                        jsonObject,
+                                                        SessionDescriptionModel::class.java
+                                                )
                                         )
                                     }
                                     CANDIDATE -> {
                                         listener.onIceCandidateReceived(
-                                            gson.fromJson(
-                                                jsonObject,
-                                                IceCandidatesModel::class.java
-                                            )
+                                                gson.fromJson(
+                                                        jsonObject,
+                                                        IceCandidatesModel::class.java
+                                                )
                                         )
-                                    }
-
-                                    else -> {
-
                                     }
                                 }
-
-                                /*if (jsonObject.has("serverUrl")) {
-                                    listener.onIceCandidateReceived(
-                                        gson.fromJson(
-                                            jsonObject,
-                                            IceCandidate::class.java
-                                        )
-                                    )
-                                } else if (jsonObject.has("type") && jsonObject.get("type").asString == "OFFER") {
-                                    listener.onOfferReceived(
-                                        gson.fromJson(
-                                            jsonObject,
-                                            SessionDescription::class.java
-                                        )
-                                    )
-                                } else if (jsonObject.has("type") && jsonObject.get("type").asString == "ANSWER") {
-                                    listener.onAnswerReceived(
-                                        gson.fromJson(
-                                            jsonObject,
-                                            SessionDescription::class.java
-                                        )
-                                    )
-                                }*/
                             }
                         }
                     }
