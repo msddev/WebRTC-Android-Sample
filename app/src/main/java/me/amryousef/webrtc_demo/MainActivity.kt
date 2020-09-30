@@ -13,10 +13,7 @@ import androidx.core.view.isVisible
 import io.ktor.util.*
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import me.amryousef.webrtc_demo.models.IceCandidatesModel
-import me.amryousef.webrtc_demo.models.LoginModel
-import me.amryousef.webrtc_demo.models.SdpModel
-import me.amryousef.webrtc_demo.models.SessionDescriptionModel
+import me.amryousef.webrtc_demo.models.*
 import org.webrtc.IceCandidate
 import org.webrtc.MediaStream
 import org.webrtc.SessionDescription
@@ -39,13 +36,24 @@ class MainActivity : AppCompatActivity() {
             super.onCreateSuccess(sessionDescription)
 
             sessionDescription?.let {
-                val sdp = SdpModel(sdp = it.description, type = it.type.name.toLowerCase(Locale.ROOT))
-                val sessionDescriptionModel = SessionDescriptionModel(
+                val sdp =
+                    SdpModel(sdp = it.description, type = it.type.name.toLowerCase(Locale.ROOT))
+
+                if (it.type == SessionDescription.Type.OFFER) {
+                    val sessionDescriptionModel = OfferModel(
                         type = it.type.name.toLowerCase(Locale.ROOT),
                         offer = sdp,
                         name = etnCalleeUserName.text.toString()
-                )
-                signallingClient.send(sessionDescriptionModel)
+                    )
+                    signallingClient.send(sessionDescriptionModel)
+                } else if (it.type == SessionDescription.Type.ANSWER) {
+                    val sessionDescriptionModel = AnswerModel(
+                        type = it.type.name.toLowerCase(Locale.ROOT),
+                        answer = sdp,
+                        name = null
+                    )
+                    signallingClient.send(sessionDescriptionModel)
+                }
             } ?: run {
                 Toast.makeText(this@MainActivity, "Error in sdpObserver", Toast.LENGTH_LONG).show()
             }
@@ -72,29 +80,38 @@ class MainActivity : AppCompatActivity() {
 
     private fun onCameraPermissionGranted() {
         rtcClient = RTCClient(
-                application,
-                object : PeerConnectionObserver() {
-                    override fun onIceCandidate(iceCandidate: IceCandidate?) {
-                        super.onIceCandidate(iceCandidate)
-                        iceCandidate?.let {
-                            val iceCandidatesModel =
-                                    IceCandidatesModel(type = "candidate", candidate = iceCandidate, name = etLoginUserName.text.toString())
-                            signallingClient.send(iceCandidatesModel)
-                            rtcClient.addIceCandidate(iceCandidate)
-                        } ?: run {
-                            Toast.makeText(
-                                    this@MainActivity,
-                                    "Error in iceCandidate",
-                                    Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
+            application,
+            object : PeerConnectionObserver() {
+                override fun onIceCandidate(p0: IceCandidate?) {
+                    super.onIceCandidate(p0)
+                    p0?.let {
+                        val iceCandidatesSubModel = IceCandidateSubModel(
+                            sdpMid = it.sdpMid,
+                            sdpMLineIndex = it.sdpMLineIndex,
+                            candidate = it.sdp
+                        )
 
-                    override fun onAddStream(p0: MediaStream?) {
-                        super.onAddStream(p0)
-                        p0?.videoTracks?.get(0)?.addSink(remote_view)
+                        val iceCandidatesModel = IceCandidatesModel(
+                            type = "candidate",
+                            candidate = iceCandidatesSubModel,
+                            name = etLoginUserName.text.toString()
+                        )
+                        signallingClient.send(iceCandidatesModel)
+                        rtcClient.addIceCandidate(it)
+                    } ?: run {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Error in iceCandidate",
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
                 }
+
+                override fun onAddStream(p0: MediaStream?) {
+                    super.onAddStream(p0)
+                    p0?.videoTracks?.get(0)?.addSink(remote_view)
+                }
+            }
         )
         rtcClient.initSurfaceView(remote_view)
         rtcClient.initSurfaceView(local_view)
@@ -131,30 +148,40 @@ class MainActivity : AppCompatActivity() {
             tvCurrentDeviceName.text = etLoginUserName.text.toString()
         }
 
-        override fun onOfferReceived(sessionDescription: SessionDescriptionModel) {
+        override fun onOfferReceived(offerData: OfferModel) {
             rtcClient.onRemoteSessionReceived(
-                    SessionDescription(
-                            SessionDescription.Type.valueOf(sessionDescription.type.toUpperCase()),
-                            sessionDescription.offer.sdp
-                    )
+                SessionDescription(
+                    SessionDescription.Type.valueOf(offerData.type.toUpperCase()),
+                    offerData.offer.sdp
+                )
             )
             rtcClient.answer(sdpObserver)
             remote_view_loading.isGone = true
         }
 
-        override fun onAnswerReceived(sessionDescription: SessionDescriptionModel) {
-
+        override fun onAnswerReceived(answerData: AnswerModel) {
             rtcClient.onRemoteSessionReceived(
-                    SessionDescription(
-                            SessionDescription.Type.valueOf(sessionDescription.type.toUpperCase()),
-                            sessionDescription.offer.sdp
-                    )
+                SessionDescription(
+                    SessionDescription.Type.valueOf(answerData.type.toUpperCase()),
+                    answerData.answer.sdp
+                )
             )
             remote_view_loading.isGone = true
         }
 
         override fun onIceCandidateReceived(iceCandidate: IceCandidatesModel) {
-            rtcClient.addIceCandidate(iceCandidate.candidate)
+            val mIceCandidate = IceCandidate(
+                iceCandidate.candidate.sdpMid,
+                iceCandidate.candidate.sdpMLineIndex,
+                iceCandidate.candidate.candidate
+            )
+
+            rtcClient.addIceCandidate(mIceCandidate)
+        }
+
+        override fun onError(msg: String) {
+            Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+
         }
     }
 

@@ -130,10 +130,6 @@ class RTCClient(
     }
 
     private fun PeerConnection.answer(sdpObserver: SdpObserver) {
-        val constraints = MediaConstraints().apply {
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
-        }
-
         createAnswer(object : SdpObserver by sdpObserver {
             override fun onCreateSuccess(p0: SessionDescription?) {
                 setLocalDescription(object : SdpObserver {
@@ -151,7 +147,7 @@ class RTCClient(
                 }, p0)
                 sdpObserver.onCreateSuccess(p0)
             }
-        }, constraints)
+        }, MediaConstraints())
     }
 
     fun call(sdpObserver: SdpObserver) = peerConnection?.call(sdpObserver)

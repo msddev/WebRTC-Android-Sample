@@ -1,6 +1,7 @@
 package me.amryousef.webrtc_demo
 
 import android.util.Log
+import android.widget.Toast
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import io.ktor.client.*
@@ -11,13 +12,14 @@ import io.ktor.http.cio.websocket.*
 import io.ktor.util.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
+import me.amryousef.webrtc_demo.models.AnswerModel
 import me.amryousef.webrtc_demo.models.IceCandidatesModel
-import me.amryousef.webrtc_demo.models.SessionDescriptionModel
+import me.amryousef.webrtc_demo.models.OfferModel
 
 @ExperimentalCoroutinesApi
 @KtorExperimentalAPI
 class SignallingClient(
-        private val listener: SignallingClientListener
+    private val listener: SignallingClientListener
 ) : CoroutineScope {
 
     companion object {
@@ -26,6 +28,7 @@ class SignallingClient(
         private const val CANDIDATE = "candidate"
         private const val OFFER = "offer"
         private const val ANSWER = "answer"
+        private const val ERROR = "error"
     }
 
     private val job = Job()
@@ -71,26 +74,31 @@ class SignallingClient(
                                     }
                                     OFFER -> {
                                         listener.onOfferReceived(
-                                                gson.fromJson(
-                                                        jsonObject,
-                                                        SessionDescriptionModel::class.java
-                                                )
+                                            gson.fromJson(
+                                                jsonObject,
+                                                OfferModel::class.java
+                                            )
                                         )
                                     }
                                     ANSWER -> {
                                         listener.onAnswerReceived(
-                                                gson.fromJson(
-                                                        jsonObject,
-                                                        SessionDescriptionModel::class.java
-                                                )
+                                            gson.fromJson(
+                                                jsonObject,
+                                                AnswerModel::class.java
+                                            )
                                         )
                                     }
                                     CANDIDATE -> {
                                         listener.onIceCandidateReceived(
-                                                gson.fromJson(
-                                                        jsonObject,
-                                                        IceCandidatesModel::class.java
-                                                )
+                                            gson.fromJson(
+                                                jsonObject,
+                                                IceCandidatesModel::class.java
+                                            )
+                                        )
+                                    }
+                                    ERROR -> {
+                                        listener.onError(
+                                            jsonObject.get("msg").asString
                                         )
                                     }
                                 }
